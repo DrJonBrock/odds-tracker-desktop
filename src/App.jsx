@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowUpIcon, ArrowDownIcon, MinusIcon, AlertCircle, PlusCircle, RefreshCw } from 'lucide-react';
+import { ArrowUpIcon, ArrowDownIcon, MinusIcon, AlertCircle, RefreshCw } from 'lucide-react';
 import { fetch } from '@tauri-apps/api/http';
 import { parseRaceData, calculateFieldOdds } from './utils/oddsParser';
+import { fetchOptions } from './utils/networkUtils';
 
 const OddsTracker = () => {
   const [events, setEvents] = useState([]);
@@ -28,7 +29,10 @@ const OddsTracker = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, fetchOptions);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.text();
       const parsedData = parseRaceData(data);
       const processedOdds = parseOddsData(parsedData);
@@ -66,7 +70,7 @@ const OddsTracker = () => {
                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-2"
                 disabled={loading}
               >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}}`} />
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 Fetch Odds
               </button>
             </div>
