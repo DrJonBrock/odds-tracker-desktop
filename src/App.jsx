@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { invoke } from '@tauri-apps/api/tauri';
 import { ArrowUpIcon, ArrowDownIcon, MinusIcon, AlertCircle, RefreshCw } from 'lucide-react';
-import { fetch } from '@tauri-apps/api/http';
 import { parseRaceData, calculateFieldOdds } from './utils/oddsParser';
-import { fetchOptions } from './utils/networkUtils';
 
 const OddsTracker = () => {
   const [events, setEvents] = useState([]);
@@ -25,16 +24,18 @@ const OddsTracker = () => {
     }));
   };
 
+  const getOddsTrend = (current, previous) => {
+    if (current > previous) return <ArrowUpIcon className="w-4 h-4 text-red-500" />;
+    if (current < previous) return <ArrowDownIcon className="w-4 h-4 text-green-500" />;
+    return <MinusIcon className="w-4 h-4 text-gray-500" />;
+  };
+
   const fetchOdds = async (url) => {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch(url, fetchOptions);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.text();
-      const parsedData = parseRaceData(data);
+      const response = await invoke('fetch_odds', { url });
+      const parsedData = parseRaceData(response);
       const processedOdds = parseOddsData(parsedData);
       setEvents(processedOdds);
     } catch (error) {
