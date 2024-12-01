@@ -1,28 +1,45 @@
 {
   "name": "odds-tracker-desktop",
-  "private": true,
   "version": "1.0.0",
-  "type": "module",
+  "description": "Desktop application for tracking betting odds and identifying arbitrage opportunities",
+  "main": "src/ui/index.js",
   "scripts": {
-    "dev": "vite",
+    "start": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "tauri": "tauri"
+    "test": "jest",
+    "lint": "eslint src/"
   },
   "dependencies": {
-    "@tauri-apps/api": "^1.5.0",
+    "@radix-ui/react-alert-dialog": "^1.0.5",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "lucide-react": "^0.263.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "lucide-react": "^0.263.1"
+    "recharts": "^2.10.3",
+    "tailwind-merge": "^2.1.0",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^1.5.0",
-    "@types/react": "^18.2.15",
-    "@types/react-dom": "^18.2.7",
-    "@vitejs/plugin-react": "^4.0.3",
-    "autoprefixer": "^10.4.14",
-    "postcss": "^8.4.27",
-    "tailwindcss": "^3.3.3",
-    "vite": "^4.4.4"
-  }
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/react": "^14.1.2",
+    "@types/node": "^20.10.4",
+    "@types/react": "^18.2.45",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react": "^7.33.2",
+    "jest": "^29.7.0",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.10"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DrJonBrock/odds-tracker-desktop.git"
+  },
+  "author": "DrJonBrock",
+  "license": "MIT"
 }
