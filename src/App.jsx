@@ -1,89 +1,83 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowUpIcon, ArrowDownIcon, MinusIcon, AlertCircle, PlusCircle } from 'lucide-react';
+import { ArrowUpIcon, ArrowDownIcon, MinusIcon, AlertCircle, PlusCircle, RefreshCw } from 'lucide-react';
+import { fetch } from '@tauri-apps/api/http';
+import { parseRaceData, calculateFieldOdds } from './utils/oddsParser';
 
 const OddsTracker = () => {
-  const [events, setEvents] = useState([
-    {
-      id: 1,
-      name: '',
-      horse: { current: 0, previous: 0 },
-      field: { current: 0, previous: 0 }
-    }
-  ]);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [raceUrl, setRaceUrl] = useState('');
+  const [error, setError] = useState('');
 
-  const calculateImpliedProbability = (odds) => {
-    if (odds > 0) {
-      return (100 / (odds + 100)) * 100;
-    } else {
-      return (Math.abs(odds) / (Math.abs(odds) + 100)) * 100;
-    }
-  };
-
-  const calculateDifferential = (horse, field) => {
-    const horseProb = calculateImpliedProbability(horse);
-    const fieldProb = calculateImpliedProbability(field);
-    return Math.abs(horseProb - fieldProb);
-  };
-
-  const hasLargeVariance = (horse, field) => {
-    return calculateDifferential(horse, field) > 10;
-  };
-
-  const getOddsTrend = (current, previous) => {
-    if (current > previous) return <ArrowUpIcon className="w-4 h-4 text-red-500" />;
-    if (current < previous) return <ArrowDownIcon className="w-4 h-4 text-green-500" />;
-    return <MinusIcon className="w-4 h-4 text-gray-500" />;
-  };
-
-  const addEvent = () => {
-    const name = prompt('Enter horse name:');
-    if (!name) return;
-
-    const horseOdds = Number(prompt('Enter horse odds:')) || 0;
-    const fieldOdds = Number(prompt('Enter field odds:')) || 0;
-
-    const newEvent = {
-      id: events.length + 1,
-      name,
-      horse: { current: horseOdds, previous: horseOdds },
-      field: { current: fieldOdds, previous: fieldOdds }
-    };
-    setEvents([...events, newEvent]);
-  };
-
-  const updateOdds = (eventId, type) => {
-    const newOdds = prompt(`Enter new ${type} odds:`);
-    if (!newOdds) return;
-
-    setEvents(events.map(event => {
-      if (event.id === eventId) {
-        return {
-          ...event,
-          [type]: {
-            previous: event[type].current,
-            current: Number(newOdds)
-          }
-        };
+  const parseOddsData = (data) => {
+    return data.map(horse => ({
+      id: horse.number,
+      name: horse.name,
+      horse: {
+        current: horse.bestOdds,
+        previous: events.find(e => e.name === horse.name)?.horse.current || horse.bestOdds
+      },
+      field: {
+        current: calculateFieldOdds(horse.bestOdds),
+        previous: events.find(e => e.name === horse.name)?.field.current || calculateFieldOdds(horse.bestOdds)
       }
-      return event;
     }));
+  };
+
+  const fetchOdds = async (url) => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch(url);
+      const data = await response.text();
+      const parsedData = parseRaceData(data);
+      const processedOdds = parseOddsData(parsedData);
+      setEvents(processedOdds);
+    } catch (error) {
+      console.error('Error fetching odds:', error);
+      setError('Failed to fetch odds. Please check the URL and try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUrlSubmit = (e) => {
+    e.preventDefault();
+    if (raceUrl) {
+      fetchOdds(raceUrl);
+    }
   };
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
       <div className="mb-6 bg-white rounded-lg shadow">
         <div className="p-4 border-b">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold">Horse vs Field Odds Tracker</h2>
-            <button 
-              onClick={addEvent}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center gap-2"
-            >
-              <PlusCircle className="w-4 h-4" /> Add Horse
-            </button>
-          </div>
-        </div>
-        <div className="p-4">
+          <form onSubmit={handleUrlSubmit} className="mb-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={raceUrl}
+                onChange={(e) => setRaceUrl(e.target.value)}
+                placeholder="Enter odds.com.au race URL"
+                className="flex-1 p-2 border rounded"
+              />
+              <button 
+                type="submit"
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-2"
+                disabled={loading}
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}}`} />
+                Fetch Odds
+              </button>
+            </div>
+          </form>
+          
+          {error && (
+            <div className="p-2 mb-4 text-red-700 bg-red-100 rounded">
+              {error}
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
@@ -96,8 +90,11 @@ const OddsTracker = () => {
               </thead>
               <tbody>
                 {events.map(event => {
-                  const differential = calculateDifferential(event.horse.current, event.field.current);
-                  const hasAlert = hasLargeVariance(event.horse.current, event.field.current);
+                  const horseProb = (1 / event.horse.current) * 100;
+                  const fieldProb = (1 / event.field.current) * 100;
+                  const differential = Math.abs(horseProb - fieldProb);
+                  const hasAlert = differential > 10;
+
                   return (
                     <tr key={event.id} className={hasAlert ? "bg-yellow-50" : ""}>
                       <td className="p-2 border font-medium">
@@ -108,24 +105,18 @@ const OddsTracker = () => {
                           )}
                         </div>
                       </td>
-                      <td 
-                        className="p-2 border text-center cursor-pointer hover:bg-gray-50"
-                        onClick={() => updateOdds(event.id, 'horse')}
-                      >
+                      <td className="p-2 border text-center">
                         <div className="flex items-center justify-center gap-2">
-                          {event.horse.current}
+                          {event.horse.current.toFixed(2)}
                           {getOddsTrend(
                             event.horse.current,
                             event.horse.previous
                           )}
                         </div>
                       </td>
-                      <td 
-                        className="p-2 border text-center cursor-pointer hover:bg-gray-50"
-                        onClick={() => updateOdds(event.id, 'field')}
-                      >
+                      <td className="p-2 border text-center">
                         <div className="flex items-center justify-center gap-2">
-                          {event.field.current}
+                          {event.field.current.toFixed(2)}
                           {getOddsTrend(
                             event.field.current,
                             event.field.previous
