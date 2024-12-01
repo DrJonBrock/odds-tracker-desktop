@@ -1,22 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bell, Settings, TrendingUp, Wallet } from 'lucide-react';
+import { usePythonBridge } from '../hooks/usePythonBridge';
+import OddsMatrix from './OddsMatrix';
+import AlertSettings from './AlertSettings';
 
 const Dashboard = () => {
-  const [opportunities] = useState([
-    { id: 1, market: 'NBA - Warriors vs Lakers', profit: 2.5, requiredStake: 1000, platforms: ['Betfair', 'OddsJet'] },
-    { id: 2, market: 'EPL - Arsenal vs Chelsea', profit: 1.8, requiredStake: 1500, platforms: ['Odds.com.au', 'Betfair'] },
-  ]);
+  const [opportunities, setOpportunities] = useState([]);
+  const [activeOpportunities, setActiveOpportunities] = useState(0);
+  const [totalProfit, setTotalProfit] = useState(0);
+  const [error, setError] = useState(null);
+
+  // Subscribe to Python messages
+  usePythonBridge('odds_update', (data) => {
+    console.log('Received odds update:', data);
+    // Update OddsMatrix component
+  });
+
+  usePythonBridge('new_opportunity', (data) => {
+    console.log('Received new opportunity:', data);
+    setOpportunities(prev => [...prev, data]);
+    setActiveOpportunities(prev => prev + 1);
+  });
+
+  usePythonBridge('error', (data) => {
+    console.error('Received error:', data);
+    setError(data.message);
+  });
+
+  // Send settings updates to Python
+  const sendToPython = usePythonBridge('alert_settings');
+  
+  const handleSettingsChange = (settings) => {
+    sendToPython(settings);
+  };
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
+      {error && (
+        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
+          {error}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center space-x-2">
               <TrendingUp className="h-4 w-4 text-green-500" />
-              <div className="text-2xl font-bold">5</div>
+              <div className="text-2xl font-bold">{activeOpportunities}</div>
             </div>
             <p className="text-sm text-gray-500">Active Opportunities</p>
           </CardContent>
@@ -26,7 +59,7 @@ const Dashboard = () => {
           <CardContent className="pt-6">
             <div className="flex items-center space-x-2">
               <Wallet className="h-4 w-4 text-blue-500" />
-              <div className="text-2xl font-bold">$2,500</div>
+              <div className="text-2xl font-bold">${totalProfit.toLocaleString()}</div>
             </div>
             <p className="text-sm text-gray-500">Total Profit Today</p>
           </CardContent>
@@ -36,7 +69,7 @@ const Dashboard = () => {
       <Tabs defaultValue="opportunities" className="space-y-4">
         <TabsList>
           <TabsTrigger value="opportunities">Opportunities</TabsTrigger>
-          <TabsTrigger value="positions">Positions</TabsTrigger>
+          <TabsTrigger value="matrix">Odds Matrix</TabsTrigger>
           <TabsTrigger value="alerts">Alerts</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -78,6 +111,14 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="matrix">
+          <OddsMatrix />
+        </TabsContent>
+
+        <TabsContent value="alerts">
+          <AlertSettings onSettingsChange={handleSettingsChange} />
         </TabsContent>
 
         <TabsContent value="settings">
